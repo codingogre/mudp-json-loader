@@ -37,44 +37,61 @@ def parseargs(argv):
 
 # Create an dictionary of dictionaries with a key being timestamp
 def xform_json(file, index):
-    xtimeseries = {}
+    combined_doc = {}
     with open(file) as f:
         data = json.load(f)
-        xtimeseries['header'] = data['header']
-        xtimeseries['artifact'] = data['artifact']
-        xtimeseries['version_info'] = data['version_info']
-        del xtimeseries['artifact']['streams']
+        combined_doc['header'] = data['header']
+        combined_doc['artifact'] = data['artifact']
+        combined_doc['version_info'] = data['version_info']
+        del combined_doc['artifact']['streams']
         for timeseries in data['timeseries_values']:
             for count, timestamp in enumerate(timeseries['timestamp']):
-                if timestamp in xtimeseries:
-                    print(type(timeseries['values'][count]))
-                    xtimeseries[timestamp]['measurements'].append(
+                if timestamp in combined_doc:
+                    combined_doc[timestamp]['measurements'].insert(0,
                         {
+
                             "name": timeseries['name'],
-                            "source": timeseries['source'],
-                            "value": timeseries['values'][count]
+                            "source": timeseries['source']
                         }
                     )
                 else:
-                    print(type(timeseries['values'][count]))
-                    measurement = {
+                    esdoc = {
                         "timestamp": datetime.datetime.utcfromtimestamp(timestamp).isoformat(),
                         "measurements": [
                             {
                                 "name": timeseries['name'],
                                 "source": timeseries['source'],
-                                "value": timeseries['values'][count]
                             }
-                        ]
+                            ]
                     }
-                    xtimeseries[timestamp] = measurement
-        return json.dumps(xtimeseries, ignore_nan=True)
-        # return {
-        #         "_index": index,
-        #         "_op_type": "index",
-        #         # "_id": hashlib.sha1(key).hexdigest(),
-        #         "_source": json.dumps(xtimeseries, ignore_nan=True)
-        #       }
+                    combined_doc[timestamp] = esdoc
+
+                datatype = type(timeseries['values'][count])
+                if datatype is float:
+                    combined_doc[timestamp]['measurements'][0]['floatvalue'] = timeseries['values'][count]
+                elif datatype is bool:
+                    combined_doc[timestamp]['measurements'][0]['boolvalue'] = timeseries['values'][count]
+                elif datatype is list:
+                    combined_doc[timestamp]['measurements'][0]['direction'] = timeseries['values'][count][2]
+                    combined_doc[timestamp]['measurements'][0]['location'] = str(
+                        timeseries['values'][count][1]) + "," + str(timeseries['values'][count][0])
+
+        return json.dumps(combined_doc, ignore_nan=True)
+
+
+# def generate_actions(esdocs):
+#     esdoc = {}
+#     esdoc['header'] = esdocs['header']
+#     esdoc['artifact'] = esdocs['artifact']
+#     esdoc['version_info'] = esdocs['version_info']
+#     for measurement in esdocs['']:
+#         # key = (row["combined_key"] + os.path.basename(url)).encode()
+#         yield {
+#                 "_index": index,
+#                 "_op_type": "index",
+#                 # "_id": hashlib.sha1(key).hexdigest(),
+#                 "_source": json.dumps(row, ignore_nan=True)
+#               }
 
 
 if __name__ == '__main__':
@@ -85,3 +102,6 @@ if __name__ == '__main__':
     print('Index: ', index)
     with open('output.json', 'w') as f:
         print(xform_json(file, index), file=f)
+    # for success, info in streaming_bulk(client=ES, actions=generate_actions(combined_doc)):
+    #     if not success:
+    #         print('A document failed:', info)
