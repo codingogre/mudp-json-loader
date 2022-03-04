@@ -7,7 +7,7 @@ from elasticsearch.helpers import streaming_bulk
 
 ES = Elasticsearch(
      cloud_id="Auto:dXMtZWFzdC0xLmF3cy5mb3VuZC5pbyRiNzdkYzY0NWJiNTA0NjJlYjRlNjVkMjI4Nzk1ZTkwYyQ4MjZiOTdkMmJiM2Y0NjlmYmMzNjNhYzE2ZmE0ZmE5NA==",
-     http_auth=("elastic", "oi1J0gdBWzbHkMO8QcWFyoq2")
+     basic_auth=("elastic", "oi1J0gdBWzbHkMO8QcWFyoq2")
 )
 
 
@@ -50,6 +50,8 @@ def xform_json(file):
         del combined_doc['artifact']['streams']
         for timeseries in data['timeseries_values']:
             for count, timestamp in enumerate(timeseries['timestamp']):
+                if timestamp == 0:
+                    break
                 if timestamp not in combined_doc:
                     esdoc = {
                         "timestamp":  (date + timedelta(microseconds=timestamp)).isoformat(),
@@ -94,7 +96,6 @@ if __name__ == '__main__':
     # with open('output.json', 'w') as f:
     #     print(xform_json(infile), file=f)
     docs = xform_json(infile)
-    #print(generate_actions(docs, index_name))
     for success, info in streaming_bulk(client=ES, actions=generate_actions(docs, index_name)):
         if not success:
             print('A document failed:', info)
