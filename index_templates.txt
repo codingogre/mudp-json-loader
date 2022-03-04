@@ -1,0 +1,89 @@
+POST /_index_template/mudp-nested
+{
+  "index_patterns": [
+    "mudp"
+  ],
+  "template": {
+    "settings": {
+      "number_of_shards": 1
+    },
+    "mappings": {
+      "properties": {
+        "artifact": {
+          "properties": {
+            "length": {
+              "type": "keyword"
+            },
+            "name": {
+              "type": "keyword"
+            },
+            "path": {
+              "type": "keyword"
+            },
+            "type": {
+              "type": "keyword"
+            }
+          }
+        },
+        "header": {
+          "properties": {
+            "Feature": {
+              "type": "keyword"
+            },
+            "ISO_Date": {
+              "type": "long"
+            },
+            "Serial": {
+              "type": "long"
+            },
+            "Timestamp": {
+              "type": "integer"
+            },
+            "Vehicle_Tag": {
+              "type": "keyword"
+            }
+          }
+        },
+        "version_info": {
+          "properties": {
+            "name": {
+              "type": "keyword"
+            },
+            "source": {
+              "type": "keyword"
+            },
+            "value": {
+              "type": "keyword"
+            }
+          }
+        },
+        "measurements": {
+          "type": "nested",
+          "properties": {
+            "boolvalue": {
+              "type": "boolean"
+            },
+            "direction": {
+              "type": "float"
+            },
+            "floatvalue": {
+              "type": "float"
+            },
+            "location": {
+              "type": "geo_point"
+            },
+            "name": {
+              "type": "keyword"
+            },
+            "source": {
+              "type": "keyword"
+            }
+          }
+        },
+        "timestamp": {
+          "type": "date"
+        }
+      }
+    }
+  }
+}
