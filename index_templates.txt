@@ -1,4 +1,4 @@
-POST /_index_template/mudp
+POST /_index_template/mudp-nested
 {
   "index_patterns": [
     "mudp"
@@ -58,6 +58,7 @@ POST /_index_template/mudp
           }
         },
         "measurements": {
+          "type": "nested",
           "properties": {
             "boolvalue": {
               "type": "boolean"
