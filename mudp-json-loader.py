@@ -46,40 +46,43 @@ def xform_json(file):
         except ValueError:
             sys.exit("Invalid date format: " + date)
         combined_doc['artifact'] = data['artifact']
-        combined_doc['version_info'] = data['version_info']
+        combined_doc['version_info'] = {}
+        for version in data['version_info']:
+            combined_doc['version_info'][version['name']] = {
+                'source': version['source'],
+                'value': version['value']
+            }
         del combined_doc['artifact']['streams']
         for timeseries in data['timeseries_values']:
             for count, timestamp in enumerate(timeseries['timestamp']):
                 if timestamp == 0:
                     break
+                # Build initial metric if timestamp doesn't exist
                 if timestamp not in combined_doc:
-                    esdoc = {
-                        "timestamp":  (date + timedelta(microseconds=timestamp)).isoformat(),
-                        "measurements": []
-                    }
-                    combined_doc[timestamp] = esdoc
-                # Use insert() to make sure we pop a new measurement into the list
-                combined_doc[timestamp]['measurements'].insert(0, {"name": timeseries['name']})
-                combined_doc[timestamp]['measurements'][0]['source'] = timeseries['source']
-
+                    combined_doc[timestamp] = {"timestamp": (date + timedelta(microseconds=timestamp)).isoformat()}
+                # Built the metric
+                combined_doc[timestamp][timeseries['name']] = {
+                    'source': timeseries['source']
+                }
                 datatype = type(timeseries['values'][count])
                 if datatype is float:
-                    combined_doc[timestamp]['measurements'][0]['floatvalue'] = timeseries['values'][count]
+                    combined_doc[timestamp][timeseries['name']]['floatvalue'] = timeseries['values'][count]
                 elif datatype is bool:
-                    combined_doc[timestamp]['measurements'][0]['boolvalue'] = timeseries['values'][count]
+                    combined_doc[timestamp][timeseries['name']]['boolvalue'] = timeseries['values'][count]
                 elif datatype is list:
-                    combined_doc[timestamp]['measurements'][0]['direction'] = timeseries['values'][count][2]
-                    combined_doc[timestamp]['measurements'][0]['location'] = str(
-                        timeseries['values'][count][1]) + "," + str(timeseries['values'][count][0])
+                    combined_doc[timestamp][timeseries['name']]['direction'] = timeseries['values'][count][2]
+                    combined_doc[timestamp][timeseries['name']]['location'] =\
+                        str(timeseries['values'][count][1]) + "," + str(timeseries['values'][count][0])
     return combined_doc
 
 
 def generate_actions(xdoc, index):
-    esdoc = {'header': xdoc['header'], 'artifact': xdoc['artifact'], 'version_info': xdoc['version_info']}
     for key in xdoc.keys():
         if type(key) is int:
-            esdoc['timestamp'] = xdoc[key]['timestamp']
-            esdoc['measurements'] = xdoc[key]['measurements']
+            esdoc = xdoc[key]
+            esdoc['header'] = xdoc['header']
+            esdoc['artifact'] = xdoc['artifact']
+            esdoc['version_info'] = xdoc['version_info']
             yield {
                     "_index": index,
                     "_op_type": "index",
@@ -94,7 +97,7 @@ if __name__ == '__main__':
     print('Input file: ', infile)
     print('Index: ', index_name)
     # with open('output.json', 'w') as f:
-    #     print(xform_json(infile), file=f)
+    #     print(json.dumps(xform_json(infile)), file=f)
     docs = xform_json(infile)
     for success, info in streaming_bulk(client=ES, actions=generate_actions(docs, index_name)):
         if not success:
